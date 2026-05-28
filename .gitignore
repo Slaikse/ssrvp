@@ -4,15 +4,19 @@ __pycache__/
 *.pyd
 .Python
 *.egg-info/
-dist/
 build/
 .eggs/
+
+# frontend/dist/ is intentionally committed so the backend can serve
+# the React app without requiring npm run build
+!frontend/dist/
 
 .venv/
 venv/
 env/
 ENV/
 
+# Don't commit the database — use seed.py to recreate it
 *.db
 *.sqlite3
 

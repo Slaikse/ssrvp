@@ -52,5 +52,6 @@ class ExchangeResponse(BaseModel):
     proposer: UserResponse
     book_wanted: BookResponse
     book_offered: Optional[BookResponse]
+    review: Optional[ReviewResponse] = None
 
     model_config = {"from_attributes": True}

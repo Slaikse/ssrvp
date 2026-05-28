@@ -31,6 +31,7 @@ app.include_router(books.router, prefix="/api/books", tags=["Книги"])
 app.include_router(exchanges.router, prefix="/api/exchanges", tags=["Обмены"])
 app.include_router(users.router, prefix="/api/users", tags=["Пользователи"])
 
-frontend_dir = pathlib.Path(__file__).parent.parent / "frontend"
+_base = pathlib.Path(__file__).parent.parent / "frontend"
+frontend_dir = _base / "dist" if (_base / "dist").exists() else _base
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
