@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Каталог книг — BookSwap</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="container d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <a class="navbar-brand" href="/"><span class="brand-icon">📚</span> BookSwap</a>
+    <div class="d-flex align-items-center gap-2" id="nav-guest">
+      <a href="catalog.html" class="nav-link active">Каталог</a>
+      <a href="login.html"   class="nav-link nav-btn-login">Войти</a>
+      <a href="register.html" class="nav-link nav-btn-register">Регистрация</a>
+    </div>
+    <div class="d-flex align-items-center gap-2" id="nav-auth" style="display:none!important">
+      <a href="catalog.html"   class="nav-link active">Каталог</a>
+      <a href="my-books.html"  class="nav-link">Мои книги</a>
+      <a href="exchanges.html" class="nav-link">Обмены</a>
+      <a href="profile.html" class="btn-ghost d-flex align-items-center gap-2">
+        <span class="nav-user-avatar" id="nav-avatar">U</span>
+        <span id="nav-username"></span>
+      </a>
+      <button onclick="logout()" class="btn-ghost" style="color:var(--text-muted)">Выйти</button>
+    </div>
+  </div>
+</nav>
+
+<div class="container" style="padding:2rem 0 4rem">
+  <div class="row g-4">
+
+    <!-- SIDEBAR FILTERS -->
+    <div class="col-lg-3">
+      <div class="filter-card">
+        <div style="margin-bottom:1rem">
+          <input type="text" id="search-input" class="form-control" placeholder="🔍 Поиск…" style="font-size:0.88rem">
+        </div>
+
+        <h6>Жанр</h6>
+        <div id="genre-filters"></div>
+
+        <h6>Состояние</h6>
+        <div id="condition-filters"></div>
+
+        <h6>Город</h6>
+        <input type="text" id="city-input" class="form-control" placeholder="Например: Москва" style="font-size:0.85rem;margin-top:0.25rem">
+
+        <button onclick="applyFilters()" class="btn-primary-custom w-100 justify-content-center mt-3">
+          Применить
+        </button>
+        <button onclick="resetFilters()" class="btn-ghost w-100 justify-content-center mt-1">
+          Сбросить
+        </button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="col-lg-9">
+      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <div>
+          <h1 style="font-size:1.5rem;margin-bottom:0.1rem">Каталог книг</h1>
+          <p style="color:var(--text-muted);font-size:0.85rem;margin:0" id="results-count">Загружаем…</p>
+        </div>
+        <a href="my-books.html" class="btn-primary-custom" id="add-book-btn" style="display:none">
+          + Добавить книгу
+        </a>
+      </div>
+
+      <div id="books-grid" class="row g-3">
+        <div class="col-12 loading-overlay">
+          <div class="spinner" style="border-color:var(--border);border-top-color:var(--primary)"></div>
+          <div style="margin-top:0.5rem;color:var(--text-muted)">Загружаем книги…</div>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-center gap-2 mt-4" id="pagination"></div>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/utils.js"></script>
+<script>
+const GENRES = [
+    {key:'all',      label:'Все жанры'},
+    {key:'fiction',  label:'Художественная'},
+    {key:'fantasy',  label:'Фэнтези'},
+    {key:'detective',label:'Детектив'},
+    {key:'science',  label:'Наука'},
+    {key:'history',  label:'История'},
+    {key:'biography',label:'Биография'},
+    {key:'romance',  label:'Романтика'},
+    {key:'children', label:'Детская'},
+    {key:'nonfiction',label:'Нон-фикшн'},
+    {key:'other',    label:'Другое'},
+];
+const CONDITIONS = [
+    {key:'all',  label:'Любое'},
+    {key:'new',  label:'Новая'},
+    {key:'good', label:'Хорошее'},
+    {key:'fair', label:'Удовлетворительное'},
+    {key:'poor', label:'Плохое'},
+];
+
+let activeGenre = 'all';
+let activeCondition = 'all';
+let page = 0;
+const LIMIT = 12;
+
+document.addEventListener('DOMContentLoaded', () => {
+    initNavbar();
+    if (getUser()) document.getElementById('add-book-btn').style.display = 'flex';
+
+    const params = new URLSearchParams(location.search);
+    if (params.get('search')) document.getElementById('search-input').value = params.get('search');
+    if (params.get('genre')) activeGenre = params.get('genre');
+    if (params.get('city'))  document.getElementById('city-input').value = params.get('city');
+
+    renderGenreFilters();
+    renderConditionFilters();
+    loadBooks();
+
+    document.getElementById('search-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') applyFilters();
+    });
+    document.getElementById('city-input').addEventListener('keydown', e => {
+        if (e.key === 'Enter') applyFilters();
+    });
+});
+
+function renderGenreFilters() {
+    document.getElementById('genre-filters').innerHTML = GENRES.map(g => `
+        <div class="filter-option ${activeGenre === g.key ? 'active' : ''}" onclick="setGenre('${g.key}')">
+            ${g.label}
+        </div>`).join('');
+}
+
+function renderConditionFilters() {
+    document.getElementById('condition-filters').innerHTML = CONDITIONS.map(c => `
+        <div class="filter-option ${activeCondition === c.key ? 'active' : ''}" onclick="setCondition('${c.key}')">
+            ${c.label}
+        </div>`).join('');
+}
+
+function setGenre(g) { activeGenre = g; renderGenreFilters(); }
+function setCondition(c) { activeCondition = c; renderConditionFilters(); }
+
+function applyFilters() { page = 0; loadBooks(); }
+
+function resetFilters() {
+    activeGenre = 'all'; activeCondition = 'all';
+    document.getElementById('search-input').value = '';
+    document.getElementById('city-input').value = '';
+    renderGenreFilters(); renderConditionFilters();
+    page = 0; loadBooks();
+}
+
+async function loadBooks() {
+    const grid = document.getElementById('books-grid');
+    grid.innerHTML = `<div class="col-12 loading-overlay">
+        <div class="spinner" style="border-color:var(--border);border-top-color:var(--primary)"></div>
+    </div>`;
+
+    const params = {
+        limit: LIMIT,
+        skip: page * LIMIT,
+        status: 'available',
+    };
+    const search = document.getElementById('search-input').value.trim();
+    const city   = document.getElementById('city-input').value.trim();
+    if (search) params.search = search;
+    if (city)   params.city   = city;
+    if (activeGenre !== 'all')     params.genre     = activeGenre;
+    if (activeCondition !== 'all') params.condition = activeCondition;
+
+    try {
+        const books = await api.getBooks(params);
+        document.getElementById('results-count').textContent =
+            books.length ? `Найдено: ${books.length}${books.length === LIMIT ? '+' : ''} книг` : 'Ничего не найдено';
+
+        if (!books.length) {
+            grid.innerHTML = `<div class="col-12"><div class="empty-state">
+                <span class="icon">📭</span>
+                <h4>Книги не найдены</h4>
+                <p>Попробуйте изменить фильтры или поисковый запрос</p>
+                <button onclick="resetFilters()" class="btn-outline-custom">Сбросить фильтры</button>
+            </div></div>`;
+            document.getElementById('pagination').innerHTML = '';
+            return;
+        }
+
+        grid.innerHTML = books.map(b => `<div class="col-6 col-md-4">${bookCardHtml(b)}</div>`).join('');
+
+        const pag = document.getElementById('pagination');
+        pag.innerHTML = '';
+        if (page > 0) {
+            const prev = document.createElement('button');
+            prev.className = 'btn-outline-custom'; prev.textContent = '← Назад';
+            prev.onclick = () => { page--; loadBooks(); window.scrollTo(0,0); };
+            pag.appendChild(prev);
+        }
+        if (books.length === LIMIT) {
+            const next = document.createElement('button');
+            next.className = 'btn-primary-custom'; next.textContent = 'Далее →';
+            next.onclick = () => { page++; loadBooks(); window.scrollTo(0,0); };
+            pag.appendChild(next);
+        }
+    } catch (e) {
+        grid.innerHTML = `<div class="col-12 text-center py-5" style="color:var(--danger)">${escHtml(e.message)}</div>`;
+    }
+}
+</script>
+</body>
+</html>

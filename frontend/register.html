@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Регистрация — BookSwap</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body style="display:flex;flex-direction:column;min-height:100vh">
+
+<nav class="navbar">
+  <div class="container d-flex align-items-center justify-content-between">
+    <a class="navbar-brand" href="/"><span class="brand-icon">📚</span> BookSwap</a>
+    <a href="login.html" class="nav-link">Уже есть аккаунт? <strong>Войти</strong></a>
+  </div>
+</nav>
+
+<main style="flex:1;display:flex;align-items:center;justify-content:center;padding:2rem 1rem">
+  <div class="form-card" style="max-width:520px">
+    <h2 style="margin-bottom:0.25rem">Создать аккаунт</h2>
+    <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1.75rem">Присоединяйтесь к сообществу читателей</p>
+
+    <form id="reg-form" novalidate>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Email *</label>
+          <input type="email" id="email" class="form-control" placeholder="your@email.com" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Имя пользователя *</label>
+          <input type="text" id="username" class="form-control" placeholder="reader42" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Полное имя</label>
+          <input type="text" id="full_name" class="form-control" placeholder="Иван Петров">
+        </div>
+        <div class="col-12">
+          <label class="form-label">Город</label>
+          <input type="text" id="city" class="form-control" placeholder="Москва">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Пароль *</label>
+          <input type="password" id="password" class="form-control" placeholder="мин. 6 символов" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Повтор пароля *</label>
+          <input type="password" id="password2" class="form-control" placeholder="повторите пароль" required>
+        </div>
+      </div>
+
+      <div id="error-msg" class="mt-3" style="color:var(--danger);font-size:0.88rem;display:none"></div>
+
+      <button type="submit" class="btn-primary-custom w-100 justify-content-center mt-4" id="submit-btn">
+        Зарегистрироваться
+      </button>
+    </form>
+
+    <p style="text-align:center;margin-top:1.25rem;font-size:0.88rem;color:var(--text-muted)">
+      Уже есть аккаунт? <a href="login.html" style="font-weight:600">Войти</a>
+    </p>
+  </div>
+</main>
+
+<div id="toast-container"></div>
+<script src="js/api.js"></script>
+<script src="js/utils.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    if (getUser()) location.href = '/';
+});
+
+document.getElementById('reg-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const errEl = document.getElementById('error-msg');
+    errEl.style.display = 'none';
+
+    const email    = document.getElementById('email').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const full_name = document.getElementById('full_name').value.trim();
+    const city     = document.getElementById('city').value.trim();
+    const password  = document.getElementById('password').value;
+    const password2 = document.getElementById('password2').value;
+
+    if (!email || !username || !password) {
+        errEl.textContent = 'Заполните обязательные поля (*)';
+        errEl.style.display = 'block'; return;
+    }
+    if (password !== password2) {
+        errEl.textContent = 'Пароли не совпадают';
+        errEl.style.display = 'block'; return;
+    }
+    if (password.length < 6) {
+        errEl.textContent = 'Пароль должен быть не менее 6 символов';
+        errEl.style.display = 'block'; return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Создаём аккаунт…';
+
+    try {
+        const data = await api.register({ email, username, password, full_name, city });
+        setAuth(data.access_token, data.user);
+        toast('Аккаунт создан!', 'success');
+        setTimeout(() => location.href = '/', 600);
+    } catch (err) {
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Зарегистрироваться';
+    }
+});
+</script>
+</body>
+</html>
